@@ -12,6 +12,10 @@ on:
         description: "Envoyer un message de test maintenant"
         type: boolean
         default: true
+      demo:
+        description: "Démo des 2 campus (cours fictifs, sans ping)"
+        type: boolean
+        default: false
       message:
         description: "Texte du message de test"
         type: string
@@ -44,4 +48,5 @@ jobs:
           SLOT_END: ${{ steps.slot.outputs.end }}
           TEST: ${{ inputs.test }}
           TEST_MESSAGE: ${{ inputs.message }}
+          DEMO: ${{ inputs.demo }}
         run: node scripts/remind.mjs

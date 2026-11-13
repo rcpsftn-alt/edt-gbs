@@ -7,8 +7,8 @@ if (!DISCORD_WEBHOOK) throw new Error("Secret DISCORD_WEBHOOK manquant");
 
 const SITE = "https://rcpsftn-alt.github.io/edt-gbs/";
 const CAMPUS = {
-  A: { name: "Campus 1", color: 0x3d8bff },
-  B: { name: "Campus 2", color: 0xff8c1a },
+  A: { name: "Campus des quais", color: 0x3d8bff },
+  B: { name: "Campus Lucien Faure", color: 0xff8c1a },
   X: { name: "Salle non précisée", color: 0x6b7280 },
 };
 const campus = l => /(^|\W)(H\d|Amphi)/i.test(l) ? "A" : /(^|\D)1\d\d(\D|$)/.test(l) ? "B" : "X";
@@ -32,7 +32,7 @@ function parse(txt) {
   }).filter(e => !isNaN(e.start));
 }
 
-async function send(e, label) {
+function embed(e) {
   const c = CAMPUS[campus(e.loc)];
   const fields = [
     { name: "🕒 Horaire", value: `${hm(e.start)} – ${hm(e.end)}`, inline: true },
@@ -41,14 +41,18 @@ async function send(e, label) {
   if (e.prof) fields.push({ name: "👤 Intervenant", value: "`" + e.prof + "`", inline: true });
   if (e.note) fields.push({ name: "📝 Note", value: e.note.slice(0, 1000).replace(/(^|\s)(meet\.google\.com\/\S+)/g, "$1https://$2") });
   fields.push({ name: "🔗 Emploi du temps", value: `[Ouvrir mon EDT](${SITE})` });
+  return { title: e.title, url: SITE, color: c.color, fields, footer: { text: "EDT GBS · " + c.name } };
+}
+async function send(e, label, { ping = true, extra = [] } = {}) {
+  const evs = [e, ...extra];
   const body = {
-    content: (ROLE_ID ? `<@&${ROLE_ID}> ` : "") + label,
-    allowed_mentions: { roles: ROLE_ID ? [ROLE_ID] : [] },
-    embeds: [{ title: e.title, url: SITE, color: c.color, fields, footer: { text: "EDT GBS · rcpsftn-alt.github.io/edt-gbs" } }],
+    content: (ping && ROLE_ID ? `<@&${ROLE_ID}> ` : "") + label,
+    allowed_mentions: { roles: ping && ROLE_ID ? [ROLE_ID] : [] },
+    embeds: evs.map(embed),
   };
   const r = await fetch(DISCORD_WEBHOOK, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`Discord ${r.status}: ${await r.text()}`);
-  console.log(`Envoyé : ${label} — ${e.title}`);
+  console.log(`Envoyé : ${label} — ${evs.map(x => x.title).join(", ")}`);
 }
 
 let txt;
@@ -62,6 +66,15 @@ try {
 const events = parse(txt).sort((a, b) => a.start - b.start);
 const now = new Date();
 
+if (process.env.DEMO === "true") {
+  const d = (h, m) => { const x = new Date(); x.setHours(h, m, 0, 0); return x; };
+  await send(
+    { start: d(9, 0), end: d(12, 0), title: "Cours fictif – Campus des quais", prof: "DUPONT Jean", loc: "H2 - Tanjiro", note: "" },
+    process.env.TEST_MESSAGE || "Démo des couleurs de campus",
+    { ping: false, extra: [{ start: d(14, 0), end: d(17, 0), title: "Cours fictif – Campus Lucien Faure", prof: "MARTIN Claire", loc: "105", note: "Lien : meet.google.com/abc-defg-hij" }] }
+  );
+  process.exit(0);
+}
 if (TEST === "true") {
   const next = events.find(e => e.start > now);
   if (next) await send(next, process.env.TEST_MESSAGE || "🧪 Test du bot — prochain cours :");
