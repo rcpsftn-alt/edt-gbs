@@ -12,6 +12,10 @@ on:
         description: "Envoyer un message de test maintenant"
         type: boolean
         default: true
+      message:
+        description: "Texte du message de test"
+        type: string
+        default: "🧪 Test du bot — prochain cours :"
 
 jobs:
   rappels:
@@ -39,4 +43,5 @@ jobs:
           SLOT_START: ${{ steps.slot.outputs.start }}
           SLOT_END: ${{ steps.slot.outputs.end }}
           TEST: ${{ inputs.test }}
+          TEST_MESSAGE: ${{ inputs.message }}
         run: node scripts/remind.mjs

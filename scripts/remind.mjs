@@ -62,7 +62,7 @@ const now = new Date();
 
 if (TEST === "true") {
   const next = events.find(e => e.start > now);
-  if (next) await send(next, "🧪 Test du bot — prochain cours :");
+  if (next) await send(next, process.env.TEST_MESSAGE || "🧪 Test du bot — prochain cours :");
   process.exit(0);
 }
 
