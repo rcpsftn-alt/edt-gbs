@@ -16,10 +16,15 @@ on:
         description: "Démo des 2 campus (cours fictifs, sans ping)"
         type: boolean
         default: false
+      demo_campus:
+        description: "Campus de la démo"
+        type: choice
+        options: ["les deux", "Campus des quais", "Campus Lucien Faure"]
+        default: "les deux"
       message:
         description: "Texte du message de test"
         type: string
-        default: "🧪 Test du bot — prochain cours :"
+        default: ""
 
 jobs:
   rappels:
@@ -49,4 +54,5 @@ jobs:
           TEST: ${{ inputs.test }}
           TEST_MESSAGE: ${{ inputs.message }}
           DEMO: ${{ inputs.demo }}
+          DEMO_CAMPUS: ${{ inputs.demo_campus }}
         run: node scripts/remind.mjs

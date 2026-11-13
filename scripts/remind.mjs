@@ -68,11 +68,11 @@ const now = new Date();
 
 if (process.env.DEMO === "true") {
   const d = (h, m) => { const x = new Date(); x.setHours(h, m, 0, 0); return x; };
-  await send(
-    { start: d(9, 0), end: d(12, 0), title: "Cours fictif – Campus des quais", prof: "DUPONT Jean", loc: "H2 - Tanjiro", note: "" },
-    process.env.TEST_MESSAGE || "Démo des couleurs de campus",
-    { ping: false, extra: [{ start: d(14, 0), end: d(17, 0), title: "Cours fictif – Campus Lucien Faure", prof: "MARTIN Claire", loc: "105", note: "Lien : meet.google.com/abc-defg-hij" }] }
-  );
+  const quais = { start: d(9, 0), end: d(12, 0), title: "Cours fictif – Campus des quais", prof: "DUPONT Jean", loc: "H2 - Tanjiro", note: "" };
+  const lucien = { start: d(14, 0), end: d(17, 0), title: "Cours fictif – Campus Lucien Faure", prof: "MARTIN Claire", loc: "105", note: "Lien : meet.google.com/abc-defg-hij" };
+  const which = process.env.DEMO_CAMPUS || "les deux";
+  const list = which === "Campus des quais" ? [quais] : which === "Campus Lucien Faure" ? [lucien] : [quais, lucien];
+  await send(list[0], process.env.TEST_MESSAGE || `Démo — ${which}`, { ping: false, extra: list.slice(1) });
   process.exit(0);
 }
 if (TEST === "true") {
