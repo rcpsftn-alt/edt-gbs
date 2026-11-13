@@ -1,0 +1,42 @@
+name: Rappels Discord
+
+on:
+  schedule:
+    # 3 créneaux (heures UTC) pour rester sous la limite de 6h par job
+    - cron: "30 3 * * 1-6"   # rappels de 04:00 à 09:30 UTC
+    - cron: "0 9 * * 1-6"    # rappels de 09:30 à 15:00 UTC
+    - cron: "30 14 * * 1-6"  # rappels de 15:00 à 20:30 UTC
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Envoyer un message de test maintenant"
+        type: boolean
+        default: true
+
+jobs:
+  rappels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Choisir le créneau
+        id: slot
+        run: |
+          case "${{ github.event.schedule }}" in
+            "30 3 * * 1-6")  echo "start=04:00" >> $GITHUB_OUTPUT; echo "end=09:30" >> $GITHUB_OUTPUT ;;
+            "0 9 * * 1-6")   echo "start=09:30" >> $GITHUB_OUTPUT; echo "end=15:00" >> $GITHUB_OUTPUT ;;
+            "30 14 * * 1-6") echo "start=15:00" >> $GITHUB_OUTPUT; echo "end=20:30" >> $GITHUB_OUTPUT ;;
+            *)               echo "start=00:00" >> $GITHUB_OUTPUT; echo "end=00:00" >> $GITHUB_OUTPUT ;;
+          esac
+      - name: Envoyer les rappels
+        env:
+          ICAL: ${{ secrets.ICAL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_ID: ${{ vars.DISCORD_ROLE_ID }}
+          SLOT_START: ${{ steps.slot.outputs.start }}
+          SLOT_END: ${{ steps.slot.outputs.end }}
+          TEST: ${{ inputs.test }}
+        run: node scripts/remind.mjs
