@@ -86,11 +86,20 @@ const jobs = today.map((e, i) => ({
   valid: () => e.start > new Date(),
   label: e.title,
 }));
-jobs.push({ at: at7, run: async () => { await programme(now); await partiels(); }, valid: () => new Date() - at7 < 3 * 36e5, label: "programme + partiels", prio: -1 });
+jobs.push({ at: at7, run: () => programme(now), valid: () => new Date() - at7 < 3 * 36e5, label: "programme du jour", prio: -2 });
+jobs.push({ at: at7, run: () => partiels(), valid: () => new Date() - at7 < 4 * 36e5, label: "compte à rebours partiels", prio: 1 });
 jobs.sort((a, b) => a.at - b.at || (a.prio || 0) - (b.prio || 0));
+// Deux messages prévus au même moment : le suivant est décalé de 15 min
+const GAP = 15 * 60000;
+let prevAt = null;
+for (const j of jobs) {
+  if (prevAt && j.at <= prevAt) { j.at = new Date(+prevAt + GAP); console.log(`Collision : « ${j.label} » décalé à ${hm(j.at)}`); }
+  prevAt = j.at;
+}
 
 const mine = jobs.filter(j => j.at >= slotStart && j.at < slotEnd);
 console.log(`${today.length} cours aujourd'hui, ${mine.length} envoi(s) dans ce créneau ${SLOT_START}-${SLOT_END} UTC.`);
+if (process.env.DRY_RUN === "true") { mine.forEach(j => console.log(`${hm(j.at)}  ${j.label}`)); process.exit(0); }
 for (const j of mine) {
   const wait = j.at - Date.now();
   if (wait > 0) { console.log(`Attente jusqu'à ${hm(j.at)} : ${j.label}`); await sleep(wait); }
