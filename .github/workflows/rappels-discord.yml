@@ -3,26 +3,27 @@ name: Rappels Discord
 on:
   schedule:
     # 3 créneaux (heures UTC) pour rester sous la limite de 6h par job
-    - cron: "30 3 * * 1-6"   # rappels de 04:00 à 09:30 UTC
-    - cron: "0 9 * * 1-6"    # rappels de 09:30 à 15:00 UTC
-    - cron: "30 14 * * 1-6"  # rappels de 15:00 à 20:30 UTC
+    - cron: "30 3 * * *"   # 04:00 → 09:30 UTC (programme du jour 7h, partiels, 1ers cours)
+    - cron: "0 9 * * *"    # 09:30 → 15:00 UTC
+    - cron: "30 14 * * *"  # 15:00 → 20:30 UTC
   workflow_dispatch:
     inputs:
-      test:
-        description: "Envoyer un message de test maintenant"
-        type: boolean
-        default: true
-      demo:
-        description: "Démo des 2 campus (cours fictifs, sans ping)"
-        type: boolean
-        default: false
+      mode:
+        description: "Quoi envoyer maintenant"
+        type: choice
+        options: ["test", "demo", "programme", "partiels", "alerte changement (démo)"]
+        default: "test"
       demo_campus:
-        description: "Campus de la démo"
+        description: "Campus (mode demo)"
         type: choice
         options: ["les deux", "Campus des quais", "Campus Lucien Faure"]
         default: "les deux"
+      ping:
+        description: "Ping le rôle"
+        type: boolean
+        default: false
       message:
-        description: "Texte du message de test"
+        description: "Texte du message (optionnel)"
         type: string
         default: ""
 
@@ -39,20 +40,25 @@ jobs:
         id: slot
         run: |
           case "${{ github.event.schedule }}" in
-            "30 3 * * 1-6")  echo "start=04:00" >> $GITHUB_OUTPUT; echo "end=09:30" >> $GITHUB_OUTPUT ;;
-            "0 9 * * 1-6")   echo "start=09:30" >> $GITHUB_OUTPUT; echo "end=15:00" >> $GITHUB_OUTPUT ;;
-            "30 14 * * 1-6") echo "start=15:00" >> $GITHUB_OUTPUT; echo "end=20:30" >> $GITHUB_OUTPUT ;;
-            *)               echo "start=00:00" >> $GITHUB_OUTPUT; echo "end=00:00" >> $GITHUB_OUTPUT ;;
+            "30 3 * * *")  echo "start=04:00" >> $GITHUB_OUTPUT; echo "end=09:30" >> $GITHUB_OUTPUT ;;
+            "0 9 * * *")   echo "start=09:30" >> $GITHUB_OUTPUT; echo "end=15:00" >> $GITHUB_OUTPUT ;;
+            "30 14 * * *") echo "start=15:00" >> $GITHUB_OUTPUT; echo "end=20:30" >> $GITHUB_OUTPUT ;;
+            *)             echo "start=00:00" >> $GITHUB_OUTPUT; echo "end=00:00" >> $GITHUB_OUTPUT ;;
           esac
-      - name: Envoyer les rappels
+      - name: Envoyer
         env:
           ICAL: ${{ secrets.ICAL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           ROLE_ID: ${{ vars.DISCORD_ROLE_ID || '1450177530836287682' }}
           SLOT_START: ${{ steps.slot.outputs.start }}
           SLOT_END: ${{ steps.slot.outputs.end }}
-          TEST: ${{ inputs.test }}
-          TEST_MESSAGE: ${{ inputs.message }}
-          DEMO: ${{ inputs.demo }}
+          MODE: ${{ inputs.mode }}
           DEMO_CAMPUS: ${{ inputs.demo_campus }}
-        run: node scripts/remind.mjs
+          PING: ${{ inputs.ping }}
+          TEST_MESSAGE: ${{ inputs.message }}
+        run: |
+          if [ "$MODE" = "alerte changement (démo)" ]; then
+            DEMO=true node scripts/changes.mjs
+          else
+            node scripts/remind.mjs
+          fi

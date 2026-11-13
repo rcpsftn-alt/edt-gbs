@@ -1,0 +1,46 @@
+name: Récap de la semaine
+
+on:
+  schedule:
+    # Dimanche 20h heure de Paris (18h UTC en été, 19h UTC en hiver)
+    - cron: "0 18,19 * * 0"
+  workflow_dispatch:
+    inputs:
+      ping:
+        description: "Ping le rôle"
+        type: boolean
+        default: false
+      message:
+        description: "Texte du message (optionnel)"
+        type: string
+        default: ""
+
+jobs:
+  recap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier qu'il est 20h à Paris
+        id: gate
+        run: |
+          H=$(TZ=Europe/Paris date +%-H)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$H" = "20" ]; then echo "run=true" >> $GITHUB_OUTPUT; else echo "run=false" >> $GITHUB_OUTPUT; fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 22
+      - name: Installer le navigateur
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          npm init -y >/dev/null
+          npm i --no-save playwright@1
+          npx playwright install --with-deps chromium
+      - name: Envoyer le récap
+        if: steps.gate.outputs.run == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_ID: ${{ vars.DISCORD_ROLE_ID || '1450177530836287682' }}
+          PING: ${{ inputs.ping }}
+          TEST_MESSAGE: ${{ inputs.message }}
+        run: node scripts/recap.mjs
