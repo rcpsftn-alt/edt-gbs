@@ -31,7 +31,7 @@ jobs:
       - name: Télécharger l'iCal
         if: steps.gate.outputs.run == 'true'
         env:
-          EDT_ICAL_URL: ${{ secrets.EDT_ICAL_URL }}
+          EDT_ICAL_URL: ${{ secrets.ICAL || secrets.EDT_ICAL_URL }}
         run: |
           curl -fsSL --retry 3 "$EDT_ICAL_URL" -o edt.new.ics
           grep -q "BEGIN:VCALENDAR" edt.new.ics
