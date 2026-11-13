@@ -35,7 +35,7 @@ jobs:
         env:
           ICAL: ${{ secrets.ICAL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          ROLE_ID: ${{ vars.DISCORD_ROLE_ID }}
+          ROLE_ID: ${{ vars.DISCORD_ROLE_ID || '1450177530836287682' }}
           SLOT_START: ${{ steps.slot.outputs.start }}
           SLOT_END: ${{ steps.slot.outputs.end }}
           TEST: ${{ inputs.test }}
