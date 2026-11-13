@@ -98,6 +98,10 @@ input[type=search]:focus{border-color:var(--accent)}
 .exam b{display:block;font-size:13px}
 .exam .j{color:var(--danger);font-weight:700;font-family:'JetBrains Mono',monospace}
 
+.prof{cursor:copy;border-bottom:1px dashed rgba(138,144,166,.6);user-select:text;-webkit-user-select:text}
+.prof:hover{color:var(--accent2);border-color:var(--accent2)}
+.prof .cp{font-size:.85em;opacity:.6}
+.kv dd,.sheet h3{user-select:text;-webkit-user-select:text}
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin:-4px 0 12px;font-size:12px;color:var(--muted)}
 .legend span{display:flex;align-items:center;gap:7px}
 .legend i{width:14px;height:14px;border-radius:4px;border:2px solid;display:inline-block}
@@ -476,7 +480,7 @@ function renderHero(){
   else extra=`<div class="count">Dans ${dur(e.start-now)} · ${sameDay(e.start,now)?"aujourd'hui":fmtDay(e.start)}</div>`;
   el.innerHTML=`<div class="label">${cur?'<span class="dot"></span>En cours':"Prochain cours"}</div>
    <div class="next-title" style="cursor:pointer" data-i="${EV.indexOf(e)}">${esc(e.title)}</div>
-   <div class="meta"><span>🕒 <b>${hm(e.start)} – ${hm(e.end)}</b></span>${e.loc?`<span>📍 <b>${esc(e.loc)}</b> <b style="color:${col(e)}">· ${CAMPUS[campus(e)].name}</b></span>`:""}${e.prof?`<span>👤 ${esc(e.prof)}</span>`:""}${tags(e)}</div>${extra}`;
+   <div class="meta"><span>🕒 <b>${hm(e.start)} – ${hm(e.end)}</b></span>${e.loc?`<span>📍 <b>${esc(e.loc)}</b> <b style="color:${col(e)}">· ${CAMPUS[campus(e)].name}</b></span>`:""}${e.prof?`<span>👤 ${prof(e.prof)}</span>`:""}${tags(e)}</div>${extra}`;
   // aujourd'hui / prochain jour avec cours
   let day=new Date(now);let list=EV.filter(x=>sameDay(x.start,day));
   let lbl="Aujourd'hui";
@@ -492,6 +496,7 @@ function renderHero(){
   document.getElementById("exams").innerHTML=ex.map(x=>{const j=Math.round((new Date(x.start).setHours(0,0,0,0)-new Date(now).setHours(0,0,0,0))/864e5);
     return`<div class="exam" data-i="${EV.indexOf(x)}"><span class="j">J-${Math.max(0,j)}</span><b>${esc(x.title.replace(/^Partiels S\d – /,""))}${/soutenance/i.test(x.note)?" · Soutenance":""}</b>${x.start.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})} · ${hm(x.start)}</div>`}).join("");
 }
+function prof(p){return p?`<span class="prof" data-copy="${esc(p)}" title="Copier le nom">${esc(p)} <span class="cp">📋</span></span>`:""}
 function tags(e){const k=kind(e);let t="";if(k==="exam")t+='<span class="tag exam">Partiel</span>';if(k==="must")t+='<span class="tag must">Obligatoire</span>';if(/distanciel|hybride/i.test(e.mode+e.title))t+='<span class="tag dist">Distanciel</span>';if(/soutenance/i.test(e.note))t+='<span class="tag exam">Soutenance</span>';return t}
 
 /* ---------- Semaine ---------- */
@@ -538,7 +543,7 @@ function renderList(){
   let evs=q?EV.filter(match):EV.filter(e=>e.start>=from&&e.start<to);
   if(!evs.length)return`<div class="card empty" style="text-align:center;padding:40px">${q?"Aucun résultat":"Aucun cours cette semaine 😴"}</div>`;
   const groups={};evs.forEach(e=>{const k=e.start.toDateString();(groups[k]=groups[k]||[]).push(e)});
-  return`<div class="list">`+Object.values(groups).map(g=>`<div class="day ${sameDay(g[0].start,now)?"today":""}"><h3>${fmtDay(g[0].start)}${q?" "+g[0].start.getFullYear():""}</h3>`+g.map(e=>`<div class="row" data-i="${EV.indexOf(e)}" style="${e.end<now?"opacity:.45":""}"><div class="time">${hm(e.start)}<br>${hm(e.end)}</div><div class="bar" style="background:${col(e)}"></div><div><div class="ti">${esc(e.title)} ${tags(e)}</div><div class="sm">${[e.loc&&"📍 "+esc(e.loc),e.prof&&"👤 "+esc(e.prof)].filter(Boolean).join(" · ")}</div></div></div>`).join("")+`</div>`).join("")+`</div>`;
+  return`<div class="list">`+Object.values(groups).map(g=>`<div class="day ${sameDay(g[0].start,now)?"today":""}"><h3>${fmtDay(g[0].start)}${q?" "+g[0].start.getFullYear():""}</h3>`+g.map(e=>`<div class="row" data-i="${EV.indexOf(e)}" style="${e.end<now?"opacity:.45":""}"><div class="time">${hm(e.start)}<br>${hm(e.end)}</div><div class="bar" style="background:${col(e)}"></div><div><div class="ti">${esc(e.title)} ${tags(e)}</div><div class="sm">${[e.loc&&"📍 "+esc(e.loc),e.prof&&"👤 "+prof(e.prof)].filter(Boolean).join(" · ")}</div></div></div>`).join("")+`</div>`).join("")+`</div>`;
 }
 
 function render(){
@@ -567,7 +572,7 @@ function openEv(i){
      <dt>Date</dt><dd style="text-transform:capitalize">${fmtDay(e.start)} ${e.start.getFullYear()}</dd>
      <dt>Horaire</dt><dd>${hm(e.start)} – ${hm(e.end)} <span style="color:var(--muted)">(${dur(e.end-e.start)})</span></dd>
      ${e.loc?`<dt>Salle</dt><dd>${esc(e.loc)}</dd><dt>Campus</dt><dd style="color:${col(e)};font-weight:700">${CAMPUS[campus(e)].name}</dd>`:""}
-     ${e.prof?`<dt>Intervenant</dt><dd>${esc(e.prof)}</dd>`:""}
+     ${e.prof?`<dt>Intervenant</dt><dd>${prof(e.prof)}</dd>`:""}
      ${e.mode?`<dt>Format</dt><dd>${esc(e.mode)}</dd>`:""}
      ${e.note?`<dt>Note</dt><dd>${note.replace(/\n/g,"<br>")}</dd>`:""}
    </dl>
@@ -577,7 +582,12 @@ function openEv(i){
 function closeM(){document.getElementById("modal").classList.remove("on")}
 document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeM()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeM();if(e.target.tagName==="INPUT")return;if(e.key==="ArrowLeft")go(-7);if(e.key==="ArrowRight")go(7)});
-document.addEventListener("click",e=>{const t=e.target.closest("[data-i]");if(t)openEv(+t.dataset.i)});
+document.addEventListener("click",async e=>{
+  const c=e.target.closest("[data-copy]");
+  if(c){e.stopPropagation();e.preventDefault();const v=c.dataset.copy;
+    try{await navigator.clipboard.writeText(v)}catch(err){const ta=document.createElement("textarea");ta.value=v;document.body.appendChild(ta);ta.select();try{document.execCommand("copy")}catch(_){}ta.remove()}
+    toast("📋 « "+v+" » copié");return}
+  const t=e.target.closest("[data-i]");if(t)openEv(+t.dataset.i)});
 
 /* ---------- Contrôles ---------- */
 function go(n){wk=addD(wk,n);render()}

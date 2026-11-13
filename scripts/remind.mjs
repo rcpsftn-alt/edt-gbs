@@ -5,6 +5,7 @@ process.env.TZ = "Europe/Paris";
 const { ICAL, DISCORD_WEBHOOK, ROLE_ID, SLOT_START = "00:00", SLOT_END = "24:00", TEST } = process.env;
 if (!DISCORD_WEBHOOK) throw new Error("Secret DISCORD_WEBHOOK manquant");
 
+const SITE = "https://rcpsftn-alt.github.io/edt-gbs/";
 const CAMPUS = {
   A: { name: "Campus 1", color: 0x3d8bff },
   B: { name: "Campus 2", color: 0xff8c1a },
@@ -37,12 +38,13 @@ async function send(e, label) {
     { name: "🕒 Horaire", value: `${hm(e.start)} – ${hm(e.end)}`, inline: true },
     { name: "📍 Salle", value: e.loc ? `${e.loc}\n**${c.name}**` : "Non précisée", inline: true },
   ];
-  if (e.prof) fields.push({ name: "👤 Intervenant", value: e.prof, inline: true });
-  if (e.note) fields.push({ name: "📝 Note", value: e.note.slice(0, 1000) });
+  if (e.prof) fields.push({ name: "👤 Intervenant", value: "`" + e.prof + "`", inline: true });
+  if (e.note) fields.push({ name: "📝 Note", value: e.note.slice(0, 1000).replace(/(^|\s)(meet\.google\.com\/\S+)/g, "$1https://$2") });
+  fields.push({ name: "🔗 Emploi du temps", value: `[Ouvrir mon EDT](${SITE})` });
   const body = {
     content: (ROLE_ID ? `<@&${ROLE_ID}> ` : "") + label,
     allowed_mentions: { roles: ROLE_ID ? [ROLE_ID] : [] },
-    embeds: [{ title: e.title, color: c.color, fields, footer: { text: "EDT GBS · rcpsftn-alt.github.io/edt-gbs" } }],
+    embeds: [{ title: e.title, url: SITE, color: c.color, fields, footer: { text: "EDT GBS · rcpsftn-alt.github.io/edt-gbs" } }],
   };
   const r = await fetch(DISCORD_WEBHOOK, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`Discord ${r.status}: ${await r.text()}`);
