@@ -1,0 +1,22 @@
+{
+  "content": "# 📅 EDT GBS — Patch Note v1.0\n*Ton emploi du temps, sans l'intranet.*",
+  "embeds": [
+    {
+      "title": "🌐 SITE",
+      "url": "https://rcpsftn-alt.github.io/edt-gbs/",
+      "color": 3999231,
+      "description": "**Accueil**\n• **Cours en cours** avec barre de progression et temps restant, ou **prochain cours** avec compte à rebours\n• Cours **d'aujourd'hui** (ou de demain si la journée est finie)\n• Bandeau **Partiels & échéances** avec décompte J-X\n\n**Planning**\n• **Vue Semaine** façon agenda, avec ligne rouge de l'heure actuelle\n• **Vue Liste** pensée pour le téléphone\n• Navigation ← → (flèches du clavier aussi) + bouton **Aujourd'hui**, la semaine suivante s'affiche le week-end\n• 🔍 **Recherche** par cours, prof, salle ou note\n• 🟦 **Campus des quais** / 🟧 **Campus Lucien Faure** : une couleur par campus\n• 🟩 **Créneaux libres** affichés entre les cours\n• 🎛️ **Filtres** : campus, matière, masquer les cours passés (gardés en mémoire)\n• 🏷️ Tags **Partiel**, **Obligatoire**, **Distanciel**, **Soutenance**\n\n**Fiche cours** (clic sur un cours)\n• Date, horaire, durée, salle, campus, format, notes\n• 👤 **Nom du prof copiable** en un clic\n• 🗺️ **Itinéraire Google Maps** vers le campus\n• 🔗 Liens Google Meet cliquables\n• Numéro de séance (ex : 3/7) et séances terminées\n\n**📊 Stats**\n• Heures faites et restantes, nombre de séances\n• Avancement du **Semestre 1** et du **Semestre 2**\n• Répartition des heures par campus\n• Progression par matière (clic pour filtrer le planning)\n\n**📷 Export**\n• Semaine en **PNG** ou **GIF animé**\n• Format **paysage 16:10** ou **story 9:16** (Insta / Snap)"
+    },
+    {
+      "title": "🤖 BOT DISCORD",
+      "color": 16747546,
+      "description": "• ⏰ **Rappel 1h avant** le premier cours de la journée, puis **15 min avant** chaque cours suivant (ping)\n• ☀️ **Programme du jour** à 7h : cours, salles, profs, créneaux libres (« pas cours 😴 » si journée vide)\n• 📚 **Compte à rebours des partiels** à J-7, J-3 et J-1, avec les consignes (ping)\n• 📢 **Alerte de changement d'EDT** : cours ajouté, supprimé ou déplacé, changement de salle, de campus ou de prof (ping)\n• 🗓️ **Récap de la semaine** le dimanche à 20h, avec l'image de la semaine à venir\n• Cartes **aux couleurs du campus**, prof copiable, lien Maps, lien vers le site, liens Meet cliquables"
+    },
+    {
+      "title": "⚙️ SOUS LE CAPOT",
+      "color": 8150271,
+      "description": "• 🔄 EDT mis à jour **automatiquement 3x/jour** (6h, 12h, 18h)\n• ☁️ Tourne **24/7 sur GitHub**, même PC éteint\n• 💸 **100 % gratuit**\n• 🔒 Lien iCal perso stocké en secret, jamais affiché\n\n👉 **[Ouvrir l'EDT](https://rcpsftn-alt.github.io/edt-gbs/)**",
+      "footer": { "text": "EDT GBS · v1.0" }
+    }
+  ]
+}

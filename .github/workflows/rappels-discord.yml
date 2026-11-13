@@ -11,7 +11,7 @@ on:
       mode:
         description: "Quoi envoyer maintenant"
         type: choice
-        options: ["test", "demo", "programme", "partiels", "alerte changement (démo)"]
+        options: ["test", "demo", "programme", "partiels", "alerte changement (démo)", "patch note v1"]
         default: "test"
       demo_campus:
         description: "Campus (mode demo)"
@@ -57,7 +57,9 @@ jobs:
           PING: ${{ inputs.ping }}
           TEST_MESSAGE: ${{ inputs.message }}
         run: |
-          if [ "$MODE" = "alerte changement (démo)" ]; then
+          if [ "$MODE" = "patch note v1" ]; then
+            ANNONCE=annonces/patch-v1.json node scripts/announce.mjs
+          elif [ "$MODE" = "alerte changement (démo)" ]; then
             DEMO=true node scripts/changes.mjs
           else
             node scripts/remind.mjs
