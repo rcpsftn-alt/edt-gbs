@@ -1,0 +1,48 @@
+name: Mise à jour EDT
+
+on:
+  schedule:
+    # Jeudi 12h heure de Paris : 11h UTC en hiver, 10h UTC en été
+    - cron: "0 10 * * 4"
+    - cron: "0 11 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier qu'il est bien 12h à Paris
+        id: gate
+        run: |
+          H=$(TZ=Europe/Paris date +%H)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$H" = "12" ] || [ "$H" = "13" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Il est ${H}h à Paris, rien à faire."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - name: Télécharger l'iCal
+        if: steps.gate.outputs.run == 'true'
+        env:
+          EDT_ICAL_URL: ${{ secrets.EDT_ICAL_URL }}
+        run: |
+          curl -fsSL --retry 3 "$EDT_ICAL_URL" -o edt.new.ics
+          grep -q "BEGIN:VCALENDAR" edt.new.ics
+          mv edt.new.ics edt.ics
+          date -u +%Y-%m-%dT%H:%M:%SZ > updated.txt
+
+      - name: Publier
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git config user.name "edt-bot"
+          git config user.email "edt-bot@users.noreply.github.com"
+          git add edt.ics updated.txt
+          git commit -m "EDT mis à jour $(TZ=Europe/Paris date '+%d/%m/%Y %H:%M')" || echo "Aucun changement"
+          git push
