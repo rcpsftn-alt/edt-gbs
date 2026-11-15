@@ -3,53 +3,14 @@
 //  - 1h avant le 1er cours de la journée, 15 min avant les suivants (avec ping)
 // Chaque lancement gère ce qui tombe dans son créneau UTC [SLOT_START, SLOT_END).
 // MODE (lancement manuel) : test | demo | programme | partiels
-import { loadEvents, post, courseEmbed, hm, dayLabel, sameDay, sleep, freeSlots, examBlocks, daysUntil, CAMPUS, campusOf, SITE } from "./lib.mjs";
+import { loadEvents, post, courseEmbed, hm, sameDay, sleep, programme as _programme, partiels as _partiels } from "./lib.mjs";
 
 const { SLOT_START = "00:00", SLOT_END = "00:00", MODE = "", TEST_MESSAGE = "", DEMO_CAMPUS = "les deux" } = process.env;
 const PING = process.env.PING === "true";
 const events = await loadEvents();
 const now = new Date();
-
-/* ---------- Programme du jour ---------- */
-async function programme(day = now, { manual = false } = {}) {
-  const list = events.filter(e => sameDay(e.start, day));
-  const wd = day.getDay();
-  if (!list.length) {
-    if (wd >= 1 && wd <= 5 || manual) await post({ content: (TEST_MESSAGE ? TEST_MESSAGE + "\n" : "") + `☀️ **${dayLabel(day)}** — pas cours aujourd'hui 😴`, ping: manual && PING });
-    return;
-  }
-  const tot = list.reduce((s, e) => s + (e.end - e.start), 0) / 36e5;
-  const lines = list.map(e => {
-    const c = CAMPUS[campusOf(e.loc)];
-    return `\`${hm(e.start)}–${hm(e.end)}\` **${e.title}**\n${c.color === 0x3d8bff ? "🟦" : c.color === 0xff8c1a ? "🟧" : "⬜"} ${e.loc || "Salle non précisée"}${e.loc ? ` · ${c.maps ? `[${c.name}](${c.maps})` : c.name}` : ""}${e.prof ? ` · \`${e.prof}\`` : ""}${e.note ? `\n> ${e.note.split("\n")[0].slice(0, 120)}` : ""}`;
-  });
-  const free = freeSlots(list).map(([a, b]) => `${hm(a)}–${hm(b)}`);
-  const first = list[0];
-  await post({
-    content: (TEST_MESSAGE ? TEST_MESSAGE + "\n" : "") + `☀️ **Programme du ${dayLabel(day)}** — ${list.length} cours · ${Math.round(tot * 10) / 10} h`,
-    embeds: [{
-      color: CAMPUS[campusOf(first.loc)].color,
-      description: lines.join("\n\n").slice(0, 3800) + (free.length ? `\n\n🟩 **Créneaux libres** : ${free.join(" · ")}` : "") + `\n\n[Ouvrir mon EDT](${SITE})`,
-    }],
-    ping: manual && PING,
-  });
-}
-
-/* ---------- Compte à rebours des partiels ---------- */
-async function partiels({ force = false } = {}) {
-  for (const block of examBlocks(events)) {
-    const j = daysUntil(block[0].start, now);
-    if (!force && ![7, 3, 1].includes(j)) continue;
-    if (force && j < 0) continue;
-    const lines = block.map(e => `**${dayLabel(e.start)}** · \`${hm(e.start)}–${hm(e.end)}\`\n${e.title.replace(/^Partiels S\d\s*[–-]\s*/, "")}${e.loc ? ` · 📍 ${e.loc} (${CAMPUS[campusOf(e.loc)].name})` : ""}${e.note ? `\n> ⚠️ ${e.note.replace(/\n+/g, " ").trim()}` : ""}`);
-    await post({
-      content: (TEST_MESSAGE ? TEST_MESSAGE + "\n" : "") + `📚 **Partiels dans ${j} jour${j > 1 ? "s" : ""}** (J-${j}) — ${block.length} épreuve${block.length > 1 ? "s" : ""}`,
-      embeds: [{ color: 0xff5c7a, title: `Partiels du ${block[0].start.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}${block.length > 1 ? ` au ${block[block.length - 1].start.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : ""}`, url: SITE, description: lines.join("\n\n").slice(0, 4000) }],
-      ping: force ? PING : true,
-    });
-    if (force) break; // en manuel : seulement le prochain bloc
-  }
-}
+const programme = (day = now, o = {}) => _programme(events, day, { ...o, ping: PING, prefix: TEST_MESSAGE });
+const partiels = (o = {}) => _partiels(events, now, { ...o, ping: PING, prefix: TEST_MESSAGE });
 
 /* ---------- Lancements manuels ---------- */
 if (MODE === "demo") {

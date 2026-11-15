@@ -1,9 +1,6 @@
 name: Mise à jour EDT
 
 on:
-  schedule:
-    # 6h, 12h et 18h heure de Paris (hiver et été)
-    - cron: "15 4,5,10,11,16,17 * * *"
   workflow_dispatch:
 
 permissions:

@@ -1,9 +1,6 @@
 name: Récap de la semaine
 
 on:
-  schedule:
-    # Dimanche 20h heure de Paris (18h UTC en été, 19h UTC en hiver)
-    - cron: "0 18,19 * * 0"
   workflow_dispatch:
     inputs:
       ping:

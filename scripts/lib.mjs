@@ -104,3 +104,45 @@ export const daysUntil = (d, now = new Date()) => {
   const a = new Date(d); a.setHours(0, 0, 0, 0); const b = new Date(now); b.setHours(0, 0, 0, 0);
   return Math.round((a - b) / 864e5);
 };
+
+/* ---------- Programme du jour ---------- */
+export async function programme(events, day, { manual = false, ping = false, prefix = "" } = {}) {
+  const list = events.filter(e => sameDay(e.start, day));
+  const wd = day.getDay();
+  if (!list.length) {
+    if (wd >= 1 && wd <= 5 || manual) await post({ content: (prefix ? prefix + "\n" : "") + `☀️ **${dayLabel(day)}** — pas cours aujourd'hui 😴`, ping: manual && ping });
+    return;
+  }
+  const tot = list.reduce((s, e) => s + (e.end - e.start), 0) / 36e5;
+  const lines = list.map(e => {
+    const c = CAMPUS[campusOf(e.loc)];
+    return `\`${hm(e.start)}–${hm(e.end)}\` **${e.title}**\n${c.color === 0x3d8bff ? "🟦" : c.color === 0xff8c1a ? "🟧" : "⬜"} ${e.loc || "Salle non précisée"}${e.loc ? ` · ${c.maps ? `[${c.name}](${c.maps})` : c.name}` : ""}${e.prof ? ` · \`${e.prof}\`` : ""}${e.note ? `\n> ${e.note.split("\n")[0].slice(0, 120)}` : ""}`;
+  });
+  const free = freeSlots(list).map(([a, b]) => `${hm(a)}–${hm(b)}`);
+  const first = list[0];
+  await post({
+    content: (prefix ? prefix + "\n" : "") + `☀️ **Programme du ${dayLabel(day)}** — ${list.length} cours · ${Math.round(tot * 10) / 10} h`,
+    embeds: [{
+      color: CAMPUS[campusOf(first.loc)].color,
+      description: lines.join("\n\n").slice(0, 3800) + (free.length ? `\n\n🟩 **Créneaux libres** : ${free.join(" · ")}` : "") + `\n\n[Ouvrir mon EDT](${SITE})`,
+    }],
+    ping: manual && ping,
+  });
+}
+
+/* ---------- Compte à rebours des partiels ---------- */
+export async function partiels(events, now, { force = false, ping = false, prefix = "" } = {}) {
+  for (const block of examBlocks(events)) {
+    const j = daysUntil(block[0].start, now);
+    if (!force && ![7, 3, 1].includes(j)) continue;
+    if (force && j < 0) continue;
+    const lines = block.map(e => `**${dayLabel(e.start)}** · \`${hm(e.start)}–${hm(e.end)}\`\n${e.title.replace(/^Partiels S\d\s*[–-]\s*/, "")}${e.loc ? ` · 📍 ${e.loc} (${CAMPUS[campusOf(e.loc)].name})` : ""}${e.note ? `\n> ⚠️ ${e.note.replace(/\n+/g, " ").trim()}` : ""}`);
+    await post({
+      content: (prefix ? prefix + "\n" : "") + `📚 **Partiels dans ${j} jour${j > 1 ? "s" : ""}** (J-${j}) — ${block.length} épreuve${block.length > 1 ? "s" : ""}`,
+      embeds: [{ color: 0xff5c7a, title: `Partiels du ${block[0].start.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}${block.length > 1 ? ` au ${block[block.length - 1].start.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : ""}`, url: SITE, description: lines.join("\n\n").slice(0, 4000) }],
+      ping: force ? ping : true,
+    });
+    if (force) break; // en manuel : seulement le prochain bloc
+  }
+}
+

@@ -1,0 +1,55 @@
+name: Planificateur
+
+# Tourne en continu (runs de ~5h45 qui se relancent) pour envoyer les messages à l'heure exacte.
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "Début de la fenêtre (ISO, laissé vide = maintenant)"
+        type: string
+        default: ""
+  schedule:
+    # Filet de sécurité : relance le planificateur s'il s'est arrêté
+    - cron: "7 * * * *"
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  watchdog:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Relancer le planificateur s'il ne tourne plus
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          API=https://api.github.com/repos/${{ github.repository }}/actions/workflows/scheduler.yml
+          ACTIVE=$(for s in in_progress queued; do curl -s -H "Authorization: Bearer $GH_TOKEN" "$API/runs?status=$s&event=workflow_dispatch&per_page=5" | jq '.total_count'; done | paste -sd+ | bc)
+          echo "Runs actifs : $ACTIVE"
+          if [ "$ACTIVE" = "0" ]; then
+            curl -s -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$API/dispatches" -d '{"ref":"main"}'
+            echo "Planificateur relancé"
+          fi
+
+  run:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    concurrency:
+      group: scheduler
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Planificateur
+        env:
+          FROM: ${{ inputs.from }}
+          ICAL: ${{ secrets.ICAL || secrets.EDT_ICAL_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_ID: ${{ vars.DISCORD_ROLE_ID || '1450177530836287682' }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/scheduler.mjs
