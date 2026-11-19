@@ -22,8 +22,10 @@ if (MODE === "demo") {
   process.exit(0);
 }
 if (MODE === "test") {
-  const next = events.find(e => e.start > now);
-  if (next) await post({ content: TEST_MESSAGE || "🧪 Test du bot — prochain cours :", embeds: [courseEmbed(next)], ping: PING });
+  // le cours en cours s'il y en a un, sinon le prochain
+  const cur = events.find(e => e.start <= now && e.end > now);
+  const e = cur || events.find(x => x.start > now);
+  if (e) await post({ content: TEST_MESSAGE || `🧪 Test du bot — ${cur ? "cours en cours" : "prochain cours"} :`, embeds: [courseEmbed(e, {}, { progress: true, now })], ping: PING });
   process.exit(0);
 }
 if (MODE === "programme") {
