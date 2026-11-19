@@ -3,7 +3,7 @@
 //  - 1h avant le 1er cours de la journée, 15 min avant les suivants (avec ping)
 // Chaque lancement gère ce qui tombe dans son créneau UTC [SLOT_START, SLOT_END).
 // MODE (lancement manuel) : test | demo | programme | partiels
-import { loadEvents, post, courseEmbed, hm, sameDay, sleep, programme as _programme, partiels as _partiels } from "./lib.mjs";
+import { loadEvents, post, edit, liveContent, courseEmbed, hm, sameDay, sleep, programme as _programme, partiels as _partiels } from "./lib.mjs";
 
 const { SLOT_START = "00:00", SLOT_END = "00:00", MODE = "", TEST_MESSAGE = "", DEMO_CAMPUS = "les deux" } = process.env;
 const PING = process.env.PING === "true";
@@ -25,7 +25,19 @@ if (MODE === "test") {
   // le cours en cours s'il y en a un, sinon le prochain
   const cur = events.find(e => e.start <= now && e.end > now);
   const e = cur || events.find(x => x.start > now);
-  if (e) await post({ content: TEST_MESSAGE || `🧪 Test du bot — ${cur ? "cours en cours" : "prochain cours"} :`, embeds: [courseEmbed(e, {}, { progress: true, now })], ping: PING });
+  if (!e) process.exit(0);
+  const head = TEST_MESSAGE || `🧪 Test du bot — ${cur ? "cours en cours" : "prochain cours"} :`;
+  const m = await post({ content: head, embeds: [courseEmbed(e, {}, { progress: true, now })], ping: PING });
+  // cours en cours : on garde le run actif et on met la barre à jour toutes les 5 min jusqu'à la fin
+  if (cur && m?.id) {
+    while (true) {
+      await sleep(Math.min(5 * 60e3, e.end - Date.now()));
+      const t = new Date();
+      const ok = await edit(m.id, { content: `${head}\n${liveContent(e, t)}`, embeds: [courseEmbed(e, {}, { progress: true, now: t })] });
+      console.log(`↻ ${hm(t)} ${Math.round(Math.min(1, (t - e.start) / (e.end - e.start)) * 100)} %`);
+      if (!ok || t >= e.end) break;
+    }
+  }
   process.exit(0);
 }
 if (MODE === "programme") {
