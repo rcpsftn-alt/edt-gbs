@@ -2,7 +2,8 @@
 // puis relance le run suivant (les tâches planifiées de GitHub arrivent avec des heures de retard).
 // Gère : MAJ de l'EDT 6h/12h/18h (+ alerte de changement), programme du jour 7h, partiels J-7/3/1,
 // rappels 1h / 15 min avant les cours, récap du dimanche 20h. Deux messages au même moment → +15 min.
-import { parse, post, courseEmbed, hm, sameDay, sleep, programme, partiels } from "./lib.mjs";
+// Le message de rappel est ensuite modifié pendant le cours : barre de progression toutes les 5 min, puis « Terminé ».
+import { parse, post, edit, courseEmbed, liveContent, hm, sameDay, sleep, programme, partiels } from "./lib.mjs";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 
@@ -17,6 +18,28 @@ console.log(`Fenêtre : ${FROM.toISOString()} → ${UNTIL.toISOString()}`);
 const sh = cmd => { console.log("$", cmd); return execSync(cmd, { stdio: "inherit", env: process.env }); };
 const at = (day, h, m = 0) => { const d = new Date(day); d.setHours(h, m, 0, 0); return d; };
 const readEvents = () => parse(fs.readFileSync("edt.ics", "utf8"));
+
+/* ---------- Messages de rappel suivis (barre de progression) ---------- */
+// [{ id, uid, start, last }] — transmis au run suivant via l'input « live »
+const EDIT_EVERY = 5 * 60e3;
+let live = [];
+try { live = JSON.parse(process.env.LIVE || "[]"); } catch { live = []; }
+async function updateLive(events) {
+  const now = new Date();
+  for (const m of [...live]) {
+    const e = events.find(x => x.uid && x.uid === m.uid) || events.find(x => +x.start === m.start);
+    if (!e || now - e.end > 3600e3) { live = live.filter(x => x !== m); continue; } // cours supprimé ou trop vieux
+    if (now < e.start) continue;
+    const ended = now >= e.end;
+    if (!ended && m.last && now - m.last < EDIT_EVERY) continue;
+    try {
+      const ok = await edit(m.id, { content: liveContent(e, now), embeds: [courseEmbed(e, {}, { progress: true, now })] });
+      m.last = +now;
+      if (!ok || ended) live = live.filter(x => x !== m);
+      console.log(`↻ ${e.title} : ${ended ? "terminé" : Math.round((now - e.start) / (e.end - e.start) * 100) + " %"}${ok ? "" : " (message supprimé)"}`);
+    } catch (err) { console.log("Erreur maj progression :", err.message); }
+  }
+}
 
 /* ---------- Mise à jour de l'EDT ---------- */
 async function updateEdt() {
@@ -53,7 +76,10 @@ function plan(day, events) {
   jobs.push({ at: at(day, 7), label: "partiels J-7/3/1", run: ev => partiels(ev, day), prio: 1, msg: true });
   today.forEach((e, i) => jobs.push({
     at: new Date(e.start - (i === 0 ? 60 : 15) * 60e3), label: `rappel ${hm(e.start)} ${e.title}`, msg: true,
-    run: () => post({ content: i === 0 ? "⏰ Premier cours dans **1h** !" : "⏰ Cours dans **15 min** !", embeds: [courseEmbed(e)], ping: true }),
+    run: async () => {
+      const m = await post({ content: i === 0 ? "⏰ Premier cours dans **1h** !" : "⏰ Cours dans **15 min** !", embeds: [courseEmbed(e, {}, { progress: true })], ping: true });
+      if (m?.id) live.push({ id: m.id, uid: e.uid, start: +e.start });
+    },
   }));
   if (day.getDay() === 0) jobs.push({ at: at(day, 20), label: "récap de la semaine", run: recap, msg: true });
   jobs.sort((a, b) => a.at - b.at || (a.prio || 0) - (b.prio || 0));
@@ -76,6 +102,7 @@ while (Date.now() < +UNTIL) {
     console.log(`▶ ${hm(j.at)} ${j.label}`);
     try { await j.run(readEvents()); } catch (e) { console.log("Erreur :", e.message); }
   }
+  await updateLive(readEvents());
   const next = jobs.find(j => j.at > now);
   const wait = Math.min(next ? next.at - Date.now() : 60e3, 60e3, UNTIL - Date.now());
   if (wait > 0) await sleep(wait);
@@ -86,7 +113,7 @@ if (!DRY && process.env.GITHUB_TOKEN) {
   const r = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/actions/workflows/scheduler.yml/dispatches`, {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json" },
-    body: JSON.stringify({ ref: "main", inputs: { from: UNTIL.toISOString() } }),
+    body: JSON.stringify({ ref: "main", inputs: { from: UNTIL.toISOString(), live: JSON.stringify(live) } }),
   });
   console.log("Relance du planificateur :", r.status);
 }

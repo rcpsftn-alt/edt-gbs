@@ -18,7 +18,7 @@ if (MODE === "demo") {
   const quais = { start: d(9, 0), end: d(12, 0), title: "Cours fictif – Campus des quais", prof: "DUPONT Jean", loc: "H2 - Tanjiro", note: "" };
   const lucien = { start: d(14, 0), end: d(17, 0), title: "Cours fictif – Campus Lucien Faure", prof: "MARTIN Claire", loc: "105", note: "Lien : meet.google.com/abc-defg-hij" };
   const list = DEMO_CAMPUS === "Campus des quais" ? [quais] : DEMO_CAMPUS === "Campus Lucien Faure" ? [lucien] : [quais, lucien];
-  await post({ content: TEST_MESSAGE || `Démo — ${DEMO_CAMPUS}`, embeds: list.map(e => courseEmbed(e)), ping: PING });
+  await post({ content: TEST_MESSAGE || `Démo — ${DEMO_CAMPUS}`, embeds: list.map(e => courseEmbed(e, {}, { progress: true })), ping: PING });
   process.exit(0);
 }
 if (MODE === "test") {

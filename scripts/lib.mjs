@@ -46,19 +46,50 @@ export async function loadEvents() {
   }
 }
 
-export function courseEmbed(e, extra = {}) {
+/* ---------- Progression d'un cours ---------- */
+const ts = (d, f = "R") => `<t:${Math.floor(+d / 1000)}:${f}>`;
+export const progressOf = (e, now = new Date()) => Math.max(0, Math.min(1, (now - e.start) / (e.end - e.start)));
+export function progressBar(e, now = new Date(), size = 14) {
+  const p = progressOf(e, now), n = Math.round(p * size), bar = "▰".repeat(n) + "▱".repeat(size - n);
+  if (now < e.start) return `${bar}\nCommence ${ts(e.start)}`;
+  if (now >= e.end) return `${bar} **Terminé ✓**`;
+  return `${bar} **${Math.round(p * 100)} %**\nFin ${ts(e.end)} · à ${hm(e.end)}`;
+}
+/** Texte au-dessus de l'embed une fois le cours commencé */
+export const liveContent = (e, now = new Date()) => now >= e.end ? "✅ Cours terminé" : `🟢 **En cours** — fin à ${hm(e.end)}`;
+
+export function courseEmbed(e, extra = {}, { progress = false, now = new Date() } = {}) {
   const c = CAMPUS[campusOf(e.loc)];
+  const done = progress && now >= e.end;
   const fields = [
     { name: "🕒 Horaire", value: `${hm(e.start)} – ${hm(e.end)}`, inline: true },
     { name: "📍 Salle", value: e.loc ? `${e.loc}\n**${c.maps ? `[${c.name}](${c.maps})` : c.name}**` : "Non précisée", inline: true },
   ];
   if (e.prof) fields.push({ name: "👤 Intervenant", value: "`" + e.prof + "`", inline: true });
   if (e.note) fields.push({ name: "📝 Note", value: linkify(e.note).slice(0, 1000) });
+  if (progress) fields.push({ name: "📊 Progression", value: progressBar(e, now) });
   fields.push({ name: "🔗 Emploi du temps", value: `[Ouvrir mon EDT](${SITE})` });
-  return { title: e.title, url: SITE, color: c.color, fields, footer: { text: "EDT GBS · " + c.name }, ...extra };
+  return { title: e.title, url: SITE, color: done ? 0x6b7280 : c.color, fields, footer: { text: "EDT GBS · " + c.name }, ...extra };
 }
 
-/** Envoie un message sur le webhook. files: [{name, data: Buffer, type}] */
+const hookUrl = (path = "", params = {}) => {
+  const u = new URL(WEBHOOK); u.pathname += path;
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  return u.toString();
+};
+
+/** Modifie un message déjà envoyé par le webhook (ne re-ping personne). Renvoie false si le message n'existe plus. */
+export async function edit(id, { content, embeds }) {
+  if (!WEBHOOK) throw new Error("Secret DISCORD_WEBHOOK manquant");
+  const body = { embeds, allowed_mentions: { parse: [] } };
+  if (content !== undefined) body.content = content;
+  const r = await fetch(hookUrl(`/messages/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (r.status === 404) return false;
+  if (!r.ok) throw new Error(`Discord edit ${r.status}: ${await r.text()}`);
+  return true;
+}
+
+/** Envoie un message sur le webhook et renvoie le message créé (avec son id). files: [{name, data: Buffer, type}] */
 export async function post({ content = "", embeds = [], ping = false, files = [] }) {
   if (!WEBHOOK) throw new Error("Secret DISCORD_WEBHOOK manquant");
   const payload = {
@@ -75,9 +106,10 @@ export async function post({ content = "", embeds = [], ping = false, files = []
   } else {
     opts = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) };
   }
-  const r = await fetch(WEBHOOK, opts);
+  const r = await fetch(hookUrl("", { wait: "true" }), opts);
   if (!r.ok) throw new Error(`Discord ${r.status}: ${await r.text()}`);
   console.log("Envoyé :", content.slice(0, 80), embeds.map(e => e.title).filter(Boolean).join(" | "));
+  return r.json();
 }
 
 /** Créneaux libres (≥ 30 min) entre les cours d'une journée */

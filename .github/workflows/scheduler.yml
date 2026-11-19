@@ -8,6 +8,10 @@ on:
         description: "Début de la fenêtre (ISO, laissé vide = maintenant)"
         type: string
         default: ""
+      live:
+        description: "Messages de rappel à mettre à jour (rempli par le run précédent)"
+        type: string
+        default: "[]"
   schedule:
     # Filet de sécurité : relance le planificateur s'il s'est arrêté
     - cron: "7 * * * *"
@@ -48,6 +52,7 @@ jobs:
       - name: Planificateur
         env:
           FROM: ${{ inputs.from }}
+          LIVE: ${{ inputs.live }}
           ICAL: ${{ secrets.ICAL || secrets.EDT_ICAL_URL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           ROLE_ID: ${{ vars.DISCORD_ROLE_ID || '1450177530836287682' }}
